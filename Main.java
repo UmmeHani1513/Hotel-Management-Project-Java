@@ -5,6 +5,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 class Food implements Serializable
@@ -28,6 +29,68 @@ class Food implements Serializable
             case 4:price=quantity*30;
                 break;
         }
+    }
+}
+
+
+class Staff implements Serializable {
+    String name;
+    String id;
+    String position;
+
+    public Staff(String name, String id, String position) {
+        this.name = name;
+        this.id = id;
+        this.position = position;
+    }
+
+    @Override
+    public String toString() {
+        return "Staff{" +
+                "name='" + name + '\'' +
+                ", id='" + id + '\'' +
+                ", position='" + position + '\'' +
+                '}';
+    }
+}
+
+class StaffManager implements Serializable {
+    static StaffManager instance;
+    private List<Staff> staffList;
+
+    private StaffManager() {
+        staffList = new ArrayList<>();
+    }
+
+    public static synchronized StaffManager getInstance() {
+        if (instance == null) {
+            instance = new StaffManager();
+        }
+        return instance;
+    }
+
+    public void addStaff(Staff staff) {
+        staffList.add(staff);
+    }
+
+    public Staff getStaffById(String id) {
+        for (Staff staff : staffList) {
+            if (staff.id.equals(id)) {
+                return staff;
+            }
+        }
+        return null;
+    }
+
+    public void displayAllStaff() {
+        for (Staff staff : staffList) {
+            System.out.println(staff);
+        }
+    }
+
+    // Method to return the StaffManager instance (needed for serialization/deserialization)
+    private Object readResolve() {
+        return instance;
     }
 }
 class Singleroom implements Serializable
@@ -474,115 +537,157 @@ class Hotel
 }
 
 
-class write implements Runnable
-{
+class write implements Runnable {
     holder hotel_ob;
-    write(holder hotel_ob)
-    {
-        this.hotel_ob=hotel_ob;
+
+    write(holder hotel_ob) {
+        this.hotel_ob = hotel_ob;
     }
+
     @Override
     public void run() {
-          try{
-        FileOutputStream fout=new FileOutputStream("backup");
-        ObjectOutputStream oos=new ObjectOutputStream(fout);
-        oos.writeObject(hotel_ob);
+        try {
+            FileOutputStream fout = new FileOutputStream("backup");
+            ObjectOutputStream oos = new ObjectOutputStream(fout);
+            oos.writeObject(hotel_ob);
+
+            // Serialize StaffManager
+            FileOutputStream staffOut = new FileOutputStream("staff_backup");
+            ObjectOutputStream staffOos = new ObjectOutputStream(staffOut);
+            staffOos.writeObject(StaffManager.getInstance()); // Save StaffManager instance
+
+        } catch (Exception e) {
+            System.out.println("Error in writing " + e);
         }
-        catch(Exception e)
-        {
-            System.out.println("Error in writing "+e);
-        }         
-        
     }
-    
 }
-
 public class Main {
-    public static void main(String[] args){
-        
-        try
-        {           
-        File f = new File("backup");
-        if(f.exists())
-        {
-            FileInputStream fin=new FileInputStream(f);
-            ObjectInputStream ois=new ObjectInputStream(fin);
-            Hotel.hotel_ob=(holder)ois.readObject();
-        }
-        Scanner sc = new Scanner(System.in);
-        int ch,ch2;
-        char wish;
-        x:
-        do{
+    public static void main(String[] args) {
+        try {
+            // Deserialize hotel_ob
+            File f = new File("backup");
+            if (f.exists()) {
+                FileInputStream fin = new FileInputStream(f);
+                ObjectInputStream ois = new ObjectInputStream(fin);
+                Hotel.hotel_ob = (holder) ois.readObject();
+            }
 
-        System.out.println("\nEnter your choice :\n1.Display room details\n2.Display room availability \n3.Book\n4.Order food\n5.Checkout\n6.Exit\n");
-        ch = sc.nextInt();
-        switch(ch){
-            case 1: System.out.println("\nChoose room type :\n1.Luxury Double Room \n2.Deluxe Double Room \n3.Luxury Single Room \n4.Deluxe Single Room\n");
-                    ch2 = sc.nextInt();
-                    Hotel.features(ch2);
-                break;
-            case 2:System.out.println("\nChoose room type :\n1.Luxury Double Room \n2.Deluxe Double Room \n3.Luxury Single Room\n4.Deluxe Single Room\n");
-                     ch2 = sc.nextInt();
-                     Hotel.availability(ch2);
-                break;
-            case 3:System.out.println("\nChoose room type :\n1.Luxury Double Room \n2.Deluxe Double Room \n3.Luxury Single Room\n4.Deluxe Single Room\n");
-                     ch2 = sc.nextInt();
-                     Hotel.bookroom(ch2);                     
-                break;
-            case 4:
-                 System.out.print("Room Number -");
-                     ch2 = sc.nextInt();
-                     if(ch2>60)
-                         System.out.println("Room doesn't exist");
-                     else if(ch2>40)
-                         Hotel.order(ch2-41,4);
-                     else if(ch2>30)
-                         Hotel.order(ch2-31,3);
-                     else if(ch2>10)
-                         Hotel.order(ch2-11,2);
-                     else if(ch2>0)
-                         Hotel.order(ch2-1,1);
-                     else
-                         System.out.println("Room doesn't exist");
-                     break;
-            case 5:                 
-                System.out.print("Room Number -");
-                     ch2 = sc.nextInt();
-                     if(ch2>60)
-                         System.out.println("Room doesn't exist");
-                     else if(ch2>40)
-                         Hotel.deallocate(ch2-41,4);
-                     else if(ch2>30)
-                         Hotel.deallocate(ch2-31,3);
-                     else if(ch2>10)
-                         Hotel.deallocate(ch2-11,2);
-                     else if(ch2>0)
-                         Hotel.deallocate(ch2-1,1);
-                     else
-                         System.out.println("Room doesn't exist");
-                     break;
-            case 6:break x;
-                
-        }
-           
-            System.out.println("\nContinue : (y/n)");
-            wish=sc.next().charAt(0); 
-            if(!(wish=='y'||wish=='Y'||wish=='n'||wish=='N'))
-            {
-                System.out.println("Invalid Option");
+            // Deserialize StaffManager
+            File staffFile = new File("staff_backup");
+            if (staffFile.exists()) {
+                FileInputStream staffIn = new FileInputStream(staffFile);
+                ObjectInputStream staffOis = new ObjectInputStream(staffIn);
+                StaffManager.instance = (StaffManager) staffOis.readObject();
+                StaffManager.instance = StaffManager.getInstance();
+            }
+
+            Scanner sc = new Scanner(System.in);
+            int ch, ch2;
+            char wish;
+            x:
+            do {
+                System.out.println("\nEnter your choice :\n1.Display room details\n2.Display room availability \n3.Book\n4.Order food\n5.Checkout\n6.Staff Management\n7.Exit\n");
+                ch = sc.nextInt();
+                sc.nextLine(); // Consume newline
+
+                switch (ch) {
+                    case 1:
+                        System.out.println("\nChoose room type :\n1.Luxury Double Room \n2.Deluxe Double Room \n3.Luxury Single Room \n4.Deluxe Single Room\n");
+                        ch2 = sc.nextInt();
+                        sc.nextLine(); // Consume newline
+                        Hotel.features(ch2);
+                        break;
+                    case 2:
+                        System.out.println("\nChoose room type :\n1.Luxury Double Room \n2.Deluxe Double Room \n3.Luxury Single Room\n4.Deluxe Single Room\n");
+                        ch2 = sc.nextInt();
+                        sc.nextLine(); // Consume newline
+                        Hotel.availability(ch2);
+                        break;
+                    case 3:
+                        System.out.println("\nChoose room type :\n1.Luxury Double Room \n2.Deluxe Double Room \n3.Luxury Single Room\n4.Deluxe Single Room\n");
+                        ch2 = sc.nextInt();
+                        sc.nextLine(); // Consume newline
+                        Hotel.bookroom(ch2);
+                        break;
+                    case 4:
+                        System.out.print("Room Number -");
+                        ch2 = sc.nextInt();
+                        sc.nextLine(); // Consume newline
+                        if (ch2 > 60)
+                            System.out.println("Room doesn't exist");
+                        else if (ch2 > 40)
+                            Hotel.order(ch2 - 41, 4);
+                        else if (ch2 > 30)
+                            Hotel.order(ch2 - 31, 3);
+                        else if (ch2 > 10)
+                            Hotel.order(ch2 - 11, 2);
+                        else if (ch2 > 0)
+                            Hotel.order(ch2 - 1, 1);
+                        else
+                            System.out.println("Room doesn't exist");
+                        break;
+                    case 5:
+                        System.out.print("Room Number -");
+                        ch2 = sc.nextInt();
+                        sc.nextLine(); // Consume newline
+                        if (ch2 > 60)
+                            System.out.println("Room doesn't exist");
+                        else if (ch2 > 40)
+                            Hotel.deallocate(ch2 - 41, 4);
+                        else if (ch2 > 30)
+                            Hotel.deallocate(ch2 - 31, 3);
+                        else if (ch2 > 10)
+                            Hotel.deallocate(ch2 - 11, 2);
+                        else if (ch2 > 0)
+                            Hotel.deallocate(ch2 - 1, 1);
+                        else
+                            System.out.println("Room doesn't exist");
+                        break;
+                    case 6: // Staff management case
+                        StaffManager staffManager = StaffManager.getInstance();
+                        System.out.println("\nStaff Management:\n1.Add Staff\n2.Display Staff");
+                        int staffChoice = sc.nextInt();
+                        sc.nextLine(); // Consume newline
+                        switch (staffChoice) {
+                            case 1:
+                                System.out.print("Enter staff name: ");
+                                String name = sc.nextLine(); // Read the entire line for name
+                                System.out.print("Enter staff ID: ");
+                                String id = sc.next();
+                                sc.nextLine(); // Consume newline
+                                System.out.print("Enter staff position: ");
+                                String position = sc.nextLine(); // Read the entire line for position
+                                staffManager.addStaff(new Staff(name, id, position));
+                                System.out.println("Staff added.");
+                                break;
+                            case 2:
+                                staffManager.displayAllStaff();
+                                break;
+                            default:
+                                System.out.println("Invalid staff option.");
+                        }
+                        break;
+                    case 7:
+                        break x;
+                }
+
                 System.out.println("\nContinue : (y/n)");
-                wish=sc.next().charAt(0); 
-            }
-            
-        }while(wish=='y'||wish=='Y');    
-        
-        Thread t=new Thread(new write(Hotel.hotel_ob));
-        t.start();
-        }        
-            catch(Exception e)
-            {
-                System.out.println("Not a valid input");
-            }
+                wish = sc.next().charAt(0);
+                sc.nextLine(); // Consume newline
+                if (!(wish == 'y' || wish == 'Y' || wish == 'n' || wish == 'N')) {
+                    System.out.println("Invalid Option");
+                    System.out.println("\nContinue : (y/n)");
+                    wish = sc.next().charAt(0);
+                    sc.nextLine(); // Consume newline
+                }
+
+            } while (wish == 'y' || wish == 'Y');
+
+            // Save hotel_ob
+            Thread t = new Thread(new write(Hotel.hotel_ob));
+            t.start();
+        } catch (Exception e) {
+            System.out.println("Not a valid input");
+        }
     }
 }
